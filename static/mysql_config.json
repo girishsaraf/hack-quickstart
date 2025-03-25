@@ -1,0 +1,10 @@
+{
+  "db_type": "mysql",
+  "image": "mysql:8.0",
+  "db_user": "myuser",
+  "db_password": "mypass",
+  "db_name": "mydb",
+  "db_root_password": "rootpass",
+  "db_port": 3306,
+  "db_data": "/var/lib/mysql"
+}

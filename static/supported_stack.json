@@ -1,0 +1,5 @@
+{
+  "backend": ["fastapi", "flask", "django"],
+  "frontend": ["react", "angular", "nextjs"],
+  "db": ["mysql", "postgres"]
+}
