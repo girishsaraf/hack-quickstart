@@ -44,9 +44,10 @@ python hack-it-up.py --backend <backend> --frontend <frontend> --db <database> -
 
 ```bash
 python hack-it-up.py \
-    --template ./templates \
-    --output ./output \
-    --db-config ./database.json
+    --backend flask \
+    --frontend react \
+    --db mysql \
+    --output /Users/username/Desktop/Projects/my_new_project
 ```
 
 ### Command-line Arguments
@@ -55,3 +56,6 @@ python hack-it-up.py \
 - **`--frontend`**: Frontend choice (Use react, angular, nextjs)  
 - **`--db`**: Database choice (Use mysql / postgres)
 - **`--output`**: Path to the generated output directory structure
+
+>[!NOTE]
+> Ensure that the output dir is accessible to the code
