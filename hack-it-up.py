@@ -1,4 +1,5 @@
 import os
+import json
 import argparse
 import shutil
 from jinja2 import Environment, FileSystemLoader
@@ -7,18 +8,27 @@ DOCKER_COMPOSE_TEMPLATE = "docker-compose.yml.j2"
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
 
+def get_supported_frameworks():
+    supported_frameworks_file = os.path.join(os.path.dirname(__file__), "static/supported_stack.json")
+    supported_frameworks = json.load(open(supported_frameworks_file))
+    return supported_frameworks
+
+
 def parse_arguments():
+    supported_frameworks = get_supported_frameworks()
     parser = argparse.ArgumentParser(
-        description="Generate a fullstack project scaffold with specified backend, frontend, and database."
+        description="Generate a project structure given a choice of backend, frontend, and database"
     )
-    parser.add_argument("--backend", choices=["flask", "django"], required=True,
-                        help="Choose backend framework: flask or django")
-    parser.add_argument("--frontend", choices=["react", "angular", "nextjs"], required=True,
-                        help="Choose frontend framework: react, angular, or nextjs")
-    parser.add_argument("--db", choices=["mysql", "postgres"], required=True,
-                        help="Choose database: mysql or postgres")
-    parser.add_argument("--output_dir", type=str, required=True,
-                        help="Output directory for generated project")
+    parser.add_argument("--backend", choices=supported_frameworks["backend"], required=True,
+                        help="Choose backend framework: " + ", ".join(supported_frameworks["backend"]))
+    parser.add_argument("--frontend", choices=supported_frameworks["frontend"], required=True,
+                        help="Choose frontend framework: " + ", ".join(supported_frameworks["frontend"]))
+    parser.add_argument("--db", choices=supported_frameworks["db"], required=True,
+                        help="Choose database: " + ", ".join(supported_frameworks["db"]))
+    parser.add_argument("--output", type=str, required=True,
+                        help="Output directory for generated project. Give complete path")
+    parser.add_argument("--project_name", type=str, required=False,
+                        help="Enter project name (optional, helps in Django setup)")
     return parser.parse_args()
 
 
@@ -27,15 +37,10 @@ def create_output_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
         print(f"Created output directory: {path}")
-
-
-def map_database_config(db_type):
-    """Map database type to its docker image and port."""
-    db_configs = {
-        "mysql": {"image": "mysql:latest", "port": 3306},
-        "postgres": {"image": "postgres:latest", "port": 5432},
-    }
-    return db_configs[db_type]
+        return True
+    else:
+        print(f"Output directory already exists: {path}")
+        return False
 
 
 def render_template_file(env, template_relative_path, context):
@@ -72,28 +77,36 @@ def generate_sources():
 
     config = {
         "backend": args.backend,
-        "frontend": args.frontend,
-        **map_database_config(args.db),
+        "frontend": args.frontend
     }
 
-    output_directory = args.output_dir
-    create_output_dir(output_directory)
+    output_directory = args.output
+    create_project_status = create_output_dir(output_directory)
+    if create_project_status:
+        env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
 
-    env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+        # Generating Backend Files
+        backend_template_dir = os.path.join("backend", args.backend)
+        backend_output_dir = os.path.join(output_directory, "backend")
+        process_template_directory(env, os.path.join(TEMPLATE_DIR, backend_template_dir), backend_output_dir, config)
 
-    backend_template_dir = os.path.join("backend", args.backend)
-    backend_output_dir = os.path.join(output_directory, "backend")
-    process_template_directory(env, os.path.join(TEMPLATE_DIR, backend_template_dir), backend_output_dir, config)
+        # Generating Frontend Files
+        frontend_template_dir = os.path.join("frontend", args.frontend)
+        frontend_output_dir = os.path.join(output_directory, "frontend")
+        process_template_directory(env, os.path.join(TEMPLATE_DIR, frontend_template_dir), frontend_output_dir, config)
 
-    frontend_template_dir = os.path.join("frontend", args.frontend)
-    frontend_output_dir = os.path.join(output_directory, "frontend")
-    process_template_directory(env, os.path.join(TEMPLATE_DIR, frontend_template_dir), frontend_output_dir, config)
+        # Generating Database docker-compose
+        database_configuration_file = os.path.join(os.path.dirname(__file__), "static", args.db + "_config.json")
+        with open(database_configuration_file) as f:
+            database_config = json.load(f)
+            config.update(database_config)
 
-    docker_compose_content = render_template_file(env, DOCKER_COMPOSE_TEMPLATE, config)
-    docker_compose_output_path = os.path.join(output_directory, "docker-compose.yml")
-    with open(docker_compose_output_path, 'w') as f:
-        f.write(docker_compose_content)
-    print(f"Generated docker-compose file at: {docker_compose_output_path}")
+        # Generating Docker Compose file
+        docker_compose_content = render_template_file(env, DOCKER_COMPOSE_TEMPLATE, config)
+        docker_compose_output_path = os.path.join(output_directory, "docker-compose.yml")
+        with open(docker_compose_output_path, 'w') as f:
+            f.write(docker_compose_content)
+        print(f"Generated docker-compose file at: {docker_compose_output_path}")
 
 
 if __name__ == "__main__":
