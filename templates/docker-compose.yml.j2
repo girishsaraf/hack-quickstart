@@ -1,26 +1,38 @@
 version: "3.8"
+
 services:
   backend:
     build: ./backend
+    container_name: backend
     ports:
-      - "5000:5000"
+      - "8000:8000"
+    environment:
+      - DB_HOST=db
+      - DB_USER={{ db_user }}
+      - DB_PASSWORD={{ db_password }}
+      - DB_NAME={{ db_name }}
     depends_on:
       - db
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
+
   db:
-    image: "{{ db_image }}"
+    image: {{ image }}
+    container_name: db
+    restart: always
     environment:
-      {% if db_type == 'mysql' %}
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: mydb
-      {% elif db_type == 'postgres' %}
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: mydb
+      {% if db_type == "mysql" %}
+      MYSQL_ROOT_PASSWORD: {{ db_root_password }}
+      MYSQL_DATABASE: {{ db_name }}
+      MYSQL_USER: {{ db_user }}
+      MYSQL_PASSWORD: {{ db_password }}
+      {% elif db_type == "postgres" %}
+      POSTGRES_PASSWORD: {{ db_root_password }}
+      POSTGRES_DB: {{ db_name }}
+      POSTGRES_USER: {{ db_user }}
       {% endif %}
     ports:
       - "{{ db_port }}:{{ db_port }}"
+    volumes:
+      - db_data:{{ db_data }}
+
+volumes:
+  db_data:
